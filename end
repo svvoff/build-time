@@ -1,0 +1,11 @@
+#!/bin/sh
+
+if [ -n "$XcodeProject" ]; then
+    NAME="$XcodeProject"
+elif [ -n "$XcodeWorkspace" ]; then
+    NAME="$XcodeWorkspace"
+else
+    NAME="unknown"
+fi
+
+python PATH TO ->/buildtime.py --name "$NAME"

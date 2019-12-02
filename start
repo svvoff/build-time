@@ -1,0 +1,3 @@
+#!/bin/sh
+
+python PATH TO ->/buildtime.py start
