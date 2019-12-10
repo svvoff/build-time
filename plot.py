@@ -18,22 +18,25 @@ class BuildTime:
         self.time = float(time)
 
 class Project:
-    values = []
-    splited = {}
-
     def __init__(self, name):
+        self.values = []
+        self.splited = {}
+        self.prepared = False
         self.name = name
 
     def addBildTime(self, buildTime):
         self.values.append(buildTime)
     
     def prepareData(self):
+        if self.prepared:
+            return
         for value in self.values:
             time_list = self.splited.get(value.date)
             if time_list is None:
                 time_list = []
             time_list.append(value.time)
             self.splited[value.date] = time_list
+        self.prepared = True
 
 
 projects = []
@@ -62,7 +65,6 @@ with open(input_file, 'r') as log:
             project = Project(row["product_name"])
             projects.append(project)
         project.addBildTime(build_time)
-        
 
 for project in projects:
     project.prepareData()     
@@ -84,6 +86,7 @@ indexes = range(0, len(dates))
 sums=[]
 
 for v in dates:
+    
     summed = sum(project.splited[v])
     summed /= 60
     sums.append(summed)
