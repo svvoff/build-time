@@ -14,6 +14,7 @@ And set `end` script in Succeeds phase
 and Fails phase
 ![Alamofire: Elegant Networking in Swift](https://raw.githubusercontent.com/svvoff/build-time/master/images/fail_end.png)
 
-For ploting your build time result you should install `matplotlib`
+For ploting your build time result you should install `matplotlib` by executing command `pip install matplotlib`
+If you doesn't have `pip` run `easy_install pip`
 
 `python plot.py --input log.csv --product [your project or workspace file]` value for `--product` flag written in `product_name` field into `log.csv`
