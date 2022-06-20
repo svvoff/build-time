@@ -1,3 +1,4 @@
 .time
 .vscode/*
-log.csv
+build_time.csv
+__pycache__/*

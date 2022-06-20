@@ -1,115 +1,155 @@
-import numpy as np
-import matplotlib.pyplot as plt
+#!/usr/local/bin/python3
+
 import csv
+from constants import *
+import matplotlib.pyplot as plt
 import argparse
-from datetime import datetime
+
+# plt.style.use('_mpl-gallery')
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--input')
-parser.add_argument('--product')
+parser.add_argument('--project')
 args = parser.parse_args()
-input_file = args.input
-print(args)
-product_name = args.product
+project_name = args.project
 
-class BuildTime:
-    def __init__(self, date, time):
-        self.date = date
-        self.time = float(time)
+if project_name is None:
+    raise '--project arg is empty'
 
-class Project:
-    def __init__(self, name):
-        self.values = []
-        self.splited = {}
-        self.prepared = False
-        self.name = name
+daily_build_time = 'daily_build_time'
+daily_success_time = 'daily_success_time'
+daily_failed_time = 'daily_failed_time'
 
-    def addBildTime(self, buildTime):
-        self.values.append(buildTime)
-    
-    def prepareData(self):
-        if self.prepared:
-            return
-        for value in self.values:
-            time_list = self.splited.get(value.date)
-            if time_list is None:
-                time_list = []
-            time_list.append(value.time)
-            self.splited[value.date] = time_list
-        self.prepared = True
+def modify_row_by_tag(data, row):
+    start = int(float(row['start']))
+    end = int(float(row['end']))
+    diff = end - start
+    if diff > 0:
+        if row.get('tag') == 'success':
+            if data.get(daily_success_time):
+                dst = int(data.get(daily_success_time))
+                dst += diff
+                data[daily_success_time] = dst
+            else:
+                data[daily_success_time] = diff
+        elif row.get('tag') == 'fail':
+            if data.get(daily_failed_time):
+                dft = int(data.get(daily_failed_time))
+                dft += diff
+                data[daily_failed_time] = dft
+            else:
+                data[daily_failed_time] = diff
+    return data 
 
-
-projects = []
-
-def get_project(name):
-    for project in projects:
-        if project.name == name:
-            return project
+def collect_data(file_name):
+    with open(file_name, 'r+') as csv_file:
+        reader = csv.DictReader(csv_file)
+        data_dict = {}
+        for row in reader:
+            if row.get('project') == project_name:
+                end = row['end']
+                if end:
+                    start = row['start']
+                    if start:
+                        date_object = row['date']
+                        if data_dict.get(date_object):
+                            tmp = data_dict.get(date_object)
+                            tmp.append(row)
+                        else:
+                            tmp = [row]
+                            data_dict[date_object] = tmp
+        if data_dict:
+            c_d = {}
+            for i, (k, v) in enumerate(data_dict.items()):
+                for row in v:
+                    start = int(float(row['start']))
+                    end = int(float(row['end']))
+                    diff = end - start
+                    if diff > 0:
+                        if c_d.get(k):
+                            dd = c_d.get(k)
+                            t = int(dd.get(daily_build_time))
+                            t += diff
+                            dd[daily_build_time] = t
+                            modify_row_by_tag(dd, row)
+                            c_d[k] = dd
+                        else:
+                            dd = {}
+                            dd[daily_build_time] = diff
+                            modify_row_by_tag(dd, row)
+                            c_d[k] = dd
+                    
+            return c_d
+        else:
+            raise ValueError('No data for project = ' + project_name)
     return None
 
-datetime_format = '%Y-%m-%d %H:%M:%S'
-date_format = '%Y-%m-%d'
+char_data = collect_data(file_path)
+# print(char_data)
 
-with open(input_file, 'r') as log:
-    fieldnames = ['date', 'build_time', "product_name"]
-    reader = csv.DictReader(log, fieldnames=fieldnames)
-    for row in reader:
-        time=row["build_time"]
-            
-        if time == "build_time":
-            continue
-        project = get_project(row["product_name"])
-        date = datetime.strptime(row["date"], datetime_format).strftime(date_format)
-        build_time = BuildTime(date=date, time=time)
-        if project is None:
-            project = Project(row["product_name"])
-            projects.append(project)
-        project.addBildTime(build_time)
+# make data
+def apply_common(x):
+    date = x[0]
+    time = x[1].get(daily_build_time)
+    return (date, time)
 
-for project in projects:
-    project.prepareData()     
+def apply_success(x):
+    date = x[0]
+    time = x[1].get(daily_success_time)
+    return (date, time)
 
-project = get_project(product_name)
-if project is None:
-    raise
+def apply_fail(x):
+    date = x[0]
+    time = x[1].get(daily_failed_time)
+    return (date, time)
 
-dates = project.splited.keys()
-# datetime.strptime(date_time_str, '%Y-%m-%d')
-dates = sorted(dates, key=lambda x: datetime.strptime(x, date_format))
-dates = np.array(dates)
-# dates_without_time = map(lambda x: datetime.strptime(x, datetime_format).strftime("%Y-%m-%d"), dates)
-# dates_without_time = sorted(dates_without_time, key=lambda x: datetime.strptime(x, "%Y-%m-%d"))
+build_common = list(map(apply_common, char_data.items()))
+build_success = list(map(apply_success, char_data.items()))
+build_fail = list(map(apply_fail, char_data.items()))
 
-# indexes = np.array(range(0, len(dates)))
-indexes = range(0, len(dates))
+def common_x(x):
+    return x[0]
 
-sums=[]
+def common_y(x):
+    seconds = int(x[1])
+    return seconds / 60
 
-for v in dates:
-    
-    summed = sum(project.splited[v])
-    summed /= 60
-    sums.append(summed)
-# sums = np.array(sums)
+x_common = list(map(common_x, build_common))
+y_common = list(map(common_y, build_common))
 
-fig = plt.figure()
-ax = fig.add_subplot(111)
+x_success = list(map(common_x, build_success))
+y_success = list(map(common_y, build_success))
 
-plt.xticks(indexes, dates, rotation='vertical')
-# plt.plot(indexes, sums)
-plt.stem(indexes, sums)
+x_fail = list(map(common_x, build_fail))
+y_fail = list(map(common_y, build_fail))
 
-# plt.bar(indexes, sums)
+# plot
+fig, ax = plt.subplots()
 
-plt.xlabel('date')
-plt.ylabel('build time in minutes')
-plt.subplots_adjust(bottom=0.25)
+ax.plot(x_common, y_common, linewidth=2, markersize=5, marker='.', alpha=0.5)
+ax.plot(x_success, y_success, linewidth=2, markersize=10, marker='+', alpha=0.5, color='green')
+ax.plot(x_fail, y_fail, linewidth=2, markersize=10, marker='x', alpha=0.5, color='red')
 
-plt.title("Build time")
+for i,j in zip(x_common,y_common):
+    ax.annotate(str(round(j, 2)),  xy=(i, j),
+                horizontalalignment='center',
+                verticalalignment='center')
 
-for i, v in enumerate(sums):
-    ax.text(i, v+1, "%d" %v, ha="center")
+for i,j in zip(x_success,y_success):
+    ax.annotate(str(round(j, 2)),  xy=(i, j), color='green',
+                weight='heavy',
+                horizontalalignment='center',
+                verticalalignment='center')
 
-# plt.legend()
+for i,j in zip(x_fail,y_fail):
+    ax.annotate(str(round(j, 2)),  xy=(i, j), color='red',
+                weight='heavy',
+                horizontalalignment='center',
+                verticalalignment='center')
+
+# for i,j in zip(x,y):
+#     ax.annotate(str(j),  xy=(i, j), color='white',
+#                 fontsize="large", weight='heavy',
+#                 horizontalalignment='center',
+#                 verticalalignment='center')
 
 plt.show()
