@@ -4,15 +4,17 @@ import csv
 from constants import *
 import matplotlib.pyplot as plt
 import argparse
+import datetime
+import calendar
 
 # plt.style.use('_mpl-gallery')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--project')
 args = parser.parse_args()
-project_name = args.project
+plot_project_name = str(args.project).replace(' ', '_')
 
-if project_name is None:
+if plot_project_name is None:
     raise '--project arg is empty'
 
 daily_build_time = 'daily_build_time'
@@ -45,7 +47,7 @@ def collect_data(file_name):
         reader = csv.DictReader(csv_file)
         data_dict = {}
         for row in reader:
-            if row.get('project') == project_name:
+            if row.get('project') == plot_project_name:
                 end = row['end']
                 if end:
                     start = row['start']
@@ -80,31 +82,49 @@ def collect_data(file_name):
                     
             return c_d
         else:
-            raise ValueError('No data for project = ' + project_name)
+            raise ValueError('No data for project = ' + plot_project_name)
     return None
 
-char_data = collect_data(file_path)
-# print(char_data)
+data_file_path = file_path_with_file_name(file_name_with_project_name(plot_project_name))
+char_data = collect_data(data_file_path)
+
+def x_label_for_date_string(date_string):
+    weekday = calendar.day_name[datetime.datetime.strptime(date_string, "%Y-%m-%d").date().weekday()]
+    if weekday:
+        return date_string + "\n" + weekday
+    return date_string
 
 # make data
 def apply_common(x):
-    date = x[0]
+    date = x_label_for_date_string(x[0])
     time = x[1].get(daily_build_time)
+    if not date:
+        return None
+    if not time:
+        time = 0
     return (date, time)
 
 def apply_success(x):
-    date = x[0]
+    date = x_label_for_date_string(x[0])
     time = x[1].get(daily_success_time)
+    if not date:
+        return None
+    if not time:
+        time = 0
     return (date, time)
 
 def apply_fail(x):
-    date = x[0]
+    date = x_label_for_date_string(x[0])
     time = x[1].get(daily_failed_time)
+    if not date:
+        return None
+    if not time:
+        time = 0
     return (date, time)
 
-build_common = list(map(apply_common, char_data.items()))
-build_success = list(map(apply_success, char_data.items()))
-build_fail = list(map(apply_fail, char_data.items()))
+build_common = list(filter(lambda x: x, list(map(apply_common, char_data.items()))))
+build_success = list(filter(lambda x: x, list(map(apply_success, char_data.items()))))
+build_fail = list(filter(lambda x: x, list(map(apply_fail, char_data.items()))))
 
 def common_x(x):
     return x[0]
@@ -146,10 +166,8 @@ for i,j in zip(x_fail,y_fail):
                 horizontalalignment='center',
                 verticalalignment='center')
 
-# for i,j in zip(x,y):
-#     ax.annotate(str(j),  xy=(i, j), color='white',
-#                 fontsize="large", weight='heavy',
-#                 horizontalalignment='center',
-#                 verticalalignment='center')
+plt.title(plot_project_name)
+plt.ylabel('build time in minutes')
+plt.xlabel('date')
 
 plt.show()
