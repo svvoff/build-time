@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import argparse
 import datetime
 import calendar
+from matplotlib.widgets import Slider
 
 # plt.style.use('_mpl-gallery')
 
@@ -169,5 +170,19 @@ for i,j in zip(x_fail,y_fail):
 plt.title(plot_project_name)
 plt.ylabel('build time in minutes')
 plt.xlabel('date')
+
+axcolor = 'lightgoldenrodyellow'
+axpos = plt.axes([0.15, 0, 0.7, 0.03], facecolor=axcolor)
+
+spos = Slider(axpos, '', -1, len(x_common), valstep=0.5)
+
+def update(val):
+    pos = spos.val
+    y_min = 0
+    y_max = max(y_common) + 10
+    ax.axis([pos, pos+7, y_min, y_max])
+    fig.canvas.draw_idle()
+
+spos.on_changed(update)
 
 plt.show()
