@@ -1,6 +1,6 @@
 import os
 import time
-from datetime import date
+from datetime import date, datetime
 
 build_time_file_name_tail = "build_time.csv"
 fieldnames = ['date', 'project', 'start', 'end', 'tag']
@@ -31,3 +31,11 @@ def file_path_with_file_name(f_n):
     return dir_path + "/" + f_n
 
 file_path = file_path_with_file_name(build_time_file_name)
+
+def log_error(error):
+    log_path = file_path_with_file_name('log.txt')
+    with open(log_path, 'a+') as file:
+        now = datetime.now()
+        date_str = now.strftime("%d.%m.%Y, %H:%M:%S")
+        file.write("\n" + date_str + " " + project_name + " " + error)
+

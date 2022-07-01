@@ -3,3 +3,5 @@
 build_time.csv
 *build_time.csv
 __pycache__/*
+log.txt
+
